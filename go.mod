@@ -1,6 +1,6 @@
-module github.com/koshatul/ssl-make-bundle
+module github.com/koshatul/ssl-make-chain
 
-go 1.13
+go 1.14
 
 require (
 	github.com/na4ma4/config v0.3.0

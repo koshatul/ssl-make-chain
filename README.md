@@ -1,2 +1,2 @@
-# ssl-make-bundle
-Make an SSL bundle from a certificate.
+# ssl-make-chain
+Make an SSL chain from a certificate.

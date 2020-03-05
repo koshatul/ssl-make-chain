@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/koshatul/ssl-make-bundle/common/swim"
+	"github.com/koshatul/ssl-make-chain/common/swim"
 	"github.com/na4ma4/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,8 +20,8 @@ import (
 
 // nolint: gochecknoglobals // cobra uses globals in main
 var rootCmd = &cobra.Command{
-	Use:   "make-bundle <cert>",
-	Short: "make a bundle from a certificate",
+	Use:   "make-chain <cert>",
+	Short: "make a chain from a single certificate",
 	Args:  cobra.MinimumNArgs(1),
 	Run:   mainCommand,
 }
@@ -40,7 +40,7 @@ func main() {
 }
 
 func mainCommand(cmd *cobra.Command, args []string) {
-	vcfg := config.NewViperConfigFromViper(viper.GetViper(), "make-bundle")
+	vcfg := config.NewViperConfigFromViper(viper.GetViper(), "make-chain")
 
 	caPool := swim.NewCertPool()
 	// if err != nil {
