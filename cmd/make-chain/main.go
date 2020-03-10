@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// nolint: gochecknoglobals // cobra uses globals in main
+// nolint: gochecknoglobals,gomnd // cobra uses globals in main
 var rootCmd = &cobra.Command{
 	Use:   "make-chain <cert>",
 	Short: "make a chain from a single certificate",
@@ -43,11 +43,7 @@ func main() {
 
 func mainCommand(cmd *cobra.Command, args []string) {
 	vcfg := config.NewViperConfig("make-chain", "${HOME}/.config/make-chain.toml")
-
 	caPool := swim.NewCertPool()
-	// if err != nil {
-	// 	log.Fatalf("unable to load system CA Pool: %s", err)
-	// }
 
 	f, err := ioutil.ReadFile(args[0])
 	if err != nil {
@@ -57,8 +53,7 @@ func mainCommand(cmd *cobra.Command, args []string) {
 	block, _ := pem.Decode(f)
 	if block == nil {
 		log.Fatalf("unable to read certificate file(%s)", args[0])
-	}
-	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+	} else if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 		log.Fatalf("supplied file(%s) is not a PEM encoded certificate", args[0])
 	}
 
@@ -67,7 +62,7 @@ func mainCommand(cmd *cobra.Command, args []string) {
 		log.Fatalf("unable to parse certificate from file(%s): %s", args[0], err)
 	}
 
-	filepath.Walk(os.ExpandEnv(vcfg.GetString("ca-path")), func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(os.ExpandEnv(vcfg.GetString("ca-path")), func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".pem") || strings.HasSuffix(path, ".crt") {
 			f, err := ioutil.ReadFile(path)
 			if err != nil {
@@ -80,30 +75,22 @@ func mainCommand(cmd *cobra.Command, args []string) {
 	})
 
 	buf := bytes.NewBuffer(nil)
-
-	pem.Encode(buf, block)
+	_ = pem.Encode(buf, block)
 
 	var walkFunc func(c *x509.Certificate) error
-
 	walkFunc = func(c *x509.Certificate) error {
 		if strings.Compare(cert.Issuer.String(), c.Subject.String()) == 0 {
-			// log.Printf("Subject: %s", cert.Subject.String())
-			// log.Printf("Issuer: %s", cert.Issuer.String())
-
-			pem.Encode(buf, &pem.Block{
+			_ = pem.Encode(buf, &pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: c.Raw,
 			})
 
 			if strings.Compare(c.Subject.String(), c.Issuer.String()) == 0 {
-				// log.Printf("[root]Subject: %s", cert.Subject.String())
-				// log.Printf("[root]Issuer: %s", cert.Issuer.String())
-				return errors.New("Found the root CA")
+				return errors.New("found the root CA")
 			}
 
 			cert = c
-
-			caPool.Walk(walkFunc)
+			_ = caPool.Walk(walkFunc)
 
 			return errors.New("finished loop")
 		}
@@ -111,9 +98,7 @@ func mainCommand(cmd *cobra.Command, args []string) {
 		return nil
 	}
 
-	caPool.Walk(walkFunc)
-
+	_ = caPool.Walk(walkFunc)
 	out := bytes.NewReader(buf.Bytes())
-
-	io.Copy(os.Stdout, out)
+	_, _ = io.Copy(os.Stdout, out)
 }

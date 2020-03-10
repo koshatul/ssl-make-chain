@@ -24,42 +24,44 @@ func NewCertPool() *CertPool {
 	}
 }
 
-func (s *CertPool) copy() *CertPool {
-	p := &CertPool{
-		bySubjectKeyID: make(map[string][]int, len(s.bySubjectKeyID)),
-		byName:         make(map[string][]int, len(s.byName)),
-		certs:          make([]*x509.Certificate, len(s.certs)),
-	}
-	for k, v := range s.bySubjectKeyID {
-		indexes := make([]int, len(v))
-		copy(indexes, v)
-		p.bySubjectKeyID[k] = indexes
-	}
-	for k, v := range s.byName {
-		indexes := make([]int, len(v))
-		copy(indexes, v)
-		p.byName[k] = indexes
-	}
-	copy(p.certs, s.certs)
-	return p
-}
+// unused
+// func (s *CertPool) copy() *CertPool {
+// 	p := &CertPool{
+// 		bySubjectKeyID: make(map[string][]int, len(s.bySubjectKeyID)),
+// 		byName:         make(map[string][]int, len(s.byName)),
+// 		certs:          make([]*x509.Certificate, len(s.certs)),
+// 	}
+// 	for k, v := range s.bySubjectKeyID {
+// 		indexes := make([]int, len(v))
+// 		copy(indexes, v)
+// 		p.bySubjectKeyID[k] = indexes
+// 	}
+// 	for k, v := range s.byName {
+// 		indexes := make([]int, len(v))
+// 		copy(indexes, v)
+// 		p.byName[k] = indexes
+// 	}
+// 	copy(p.certs, s.certs)
+// 	return p
+// }
 
 // findPotentialParents returns the indexes of certificates in s which might
 // have signed cert. The caller must not modify the returned slice.
-func (s *CertPool) findPotentialParents(cert *x509.Certificate) []int {
-	if s == nil {
-		return nil
-	}
+// unused
+// func (s *CertPool) findPotentialParents(cert *x509.Certificate) []int {
+// 	if s == nil {
+// 		return nil
+// 	}
 
-	var candidates []int
-	if len(cert.AuthorityKeyId) > 0 {
-		candidates = s.bySubjectKeyID[string(cert.AuthorityKeyId)]
-	}
-	if len(candidates) == 0 {
-		candidates = s.byName[string(cert.RawIssuer)]
-	}
-	return candidates
-}
+// 	var candidates []int
+// 	if len(cert.AuthorityKeyId) > 0 {
+// 		candidates = s.bySubjectKeyID[string(cert.AuthorityKeyId)]
+// 	}
+// 	if len(candidates) == 0 {
+// 		candidates = s.byName[string(cert.RawIssuer)]
+// 	}
+// 	return candidates
+// }
 
 func (s *CertPool) contains(cert *x509.Certificate) bool {
 	if s == nil {
@@ -91,9 +93,10 @@ func (s *CertPool) AddCert(cert *x509.Certificate) {
 	s.certs = append(s.certs, cert)
 
 	if len(cert.SubjectKeyId) > 0 {
-		keyId := string(cert.SubjectKeyId)
-		s.bySubjectKeyID[keyId] = append(s.bySubjectKeyID[keyId], n)
+		keyID := string(cert.SubjectKeyId)
+		s.bySubjectKeyID[keyID] = append(s.bySubjectKeyID[keyID], n)
 	}
+
 	name := string(cert.RawSubject)
 	s.byName[name] = append(s.byName[name], n)
 }
@@ -107,10 +110,12 @@ func (s *CertPool) AddCert(cert *x509.Certificate) {
 func (s *CertPool) AppendCertsFromPEM(pemCerts []byte) (ok bool) {
 	for len(pemCerts) > 0 {
 		var block *pem.Block
+
 		block, pemCerts = pem.Decode(pemCerts)
 		if block == nil {
 			break
 		}
+
 		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 			continue
 		}
@@ -121,6 +126,7 @@ func (s *CertPool) AppendCertsFromPEM(pemCerts []byte) (ok bool) {
 		}
 
 		s.AddCert(cert)
+
 		ok = true
 	}
 
@@ -129,11 +135,13 @@ func (s *CertPool) AppendCertsFromPEM(pemCerts []byte) (ok bool) {
 
 // Subjects returns a list of the DER-encoded subjects of
 // all of the certificates in the pool.
+//lint:ignore U1001 // compatibility with x509.CertPool.
 func (s *CertPool) Subjects() [][]byte {
 	res := make([][]byte, len(s.certs))
 	for i, c := range s.certs {
 		res[i] = c.RawSubject
 	}
+
 	return res
 }
 
