@@ -28,11 +28,13 @@ var rootCmd = &cobra.Command{
 
 // nolint:gochecknoinits // init is used in main for cobra
 func init() {
-	cobra.OnInitialize(configDefaults)
-
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Debug output")
 	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	_ = viper.BindEnv("debug", "DEBUG")
+
+	rootCmd.PersistentFlags().StringP("ca-path", "c", ".", "Path to certificate store")
+	_ = viper.BindPFlag("ca-path", rootCmd.PersistentFlags().Lookup("ca-path"))
+	_ = viper.BindEnv("ca-path", "CA_PATH")
 }
 
 func main() {
@@ -40,7 +42,7 @@ func main() {
 }
 
 func mainCommand(cmd *cobra.Command, args []string) {
-	vcfg := config.NewViperConfigFromViper(viper.GetViper(), "make-chain")
+	vcfg := config.NewViperConfig("make-chain", "${HOME}/.config/make-chain.toml")
 
 	caPool := swim.NewCertPool()
 	// if err != nil {
@@ -65,10 +67,8 @@ func mainCommand(cmd *cobra.Command, args []string) {
 		log.Fatalf("unable to parse certificate from file(%s): %s", args[0], err)
 	}
 
-	filepath.Walk(vcfg.GetString("ca.path"), func(path string, info os.FileInfo, err error) error {
-		// log.Printf("File: %s", path)
-
-		if strings.HasSuffix(path, ".pem") {
+	filepath.Walk(os.ExpandEnv(vcfg.GetString("ca-path")), func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(path, ".pem") || strings.HasSuffix(path, ".crt") {
 			f, err := ioutil.ReadFile(path)
 			if err != nil {
 				return nil
