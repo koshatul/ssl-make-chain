@@ -41,34 +41,66 @@ func main() {
 	_ = rootCmd.Execute()
 }
 
-func mainCommand(cmd *cobra.Command, args []string) {
-	vcfg := config.NewViperConfig("make-chain", "${HOME}/.config/make-chain.toml")
-	caPool := swim.NewCertPool()
+func readFileIntoPool(cfg config.Conf, path string, pool *swim.CertPool) error {
+	if cfg.GetBool("debug") {
+		log.Printf("Reading Certificate File: %s", path)
+	}
 
-	f, err := ioutil.ReadFile(args[0])
+	f, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Fatalf("unable to open file(%s): %s", args[0], err)
+		return err
+	}
+
+	_ = pool.AppendCertsFromPEM(f)
+
+	return nil
+}
+
+func printDebugf(cfg config.Conf, format string, v ...interface{}) {
+	if cfg.GetBool("debug") {
+		log.Printf(format, v...)
+	}
+}
+
+func readCertificate(path string) (*x509.Certificate, *pem.Block, error) {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatalf("unable to open file(%s): %s", path, err)
 	}
 
 	block, _ := pem.Decode(f)
 	if block == nil {
-		log.Fatalf("unable to read certificate file(%s)", args[0])
+		log.Fatalf("unable to read certificate file(%s)", path)
 	} else if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-		log.Fatalf("supplied file(%s) is not a PEM encoded certificate", args[0])
+		log.Fatalf("supplied file(%s) is not a PEM encoded certificate", path)
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
+
+	return cert, block, err
+}
+
+func mainCommand(cmd *cobra.Command, args []string) {
+	vcfg := config.NewViperConfig("make-chain", "${HOME}/.config/make-chain.toml")
+	vcfg.SetBool("debug", viper.GetBool("debug"))
+	vcfg.SetString("ca-path", viper.GetString("ca-path"))
+
+	caPool := swim.NewCertPool()
+
+	cert, block, err := readCertificate(args[0])
 	if err != nil {
 		log.Fatalf("unable to parse certificate from file(%s): %s", args[0], err)
 	}
 
+	if _, err := os.Stat("/etc/ssl/cert.pem"); err == nil {
+		printDebugf(vcfg, "loading system ca-certificates /etc/ssl/cert.pem")
+
+		_ = readFileIntoPool(vcfg, "/etc/ssl/cert.pem", caPool)
+	}
+
 	_ = filepath.Walk(os.ExpandEnv(vcfg.GetString("ca-path")), func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".pem") || strings.HasSuffix(path, ".crt") {
-			f, err := ioutil.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			_ = caPool.AppendCertsFromPEM(f)
+			return readFileIntoPool(vcfg, path, caPool)
 		}
 
 		return nil
@@ -79,13 +111,19 @@ func mainCommand(cmd *cobra.Command, args []string) {
 
 	var walkFunc func(c *x509.Certificate) error
 	walkFunc = func(c *x509.Certificate) error {
+		printDebugf(vcfg, "testing chain cert: %s", c.Subject.String())
+
 		if strings.Compare(cert.Issuer.String(), c.Subject.String()) == 0 {
+			printDebugf(vcfg, "found chain cert: %s", c.Subject.String())
+
 			_ = pem.Encode(buf, &pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: c.Raw,
 			})
 
 			if strings.Compare(c.Subject.String(), c.Issuer.String()) == 0 {
+				printDebugf(vcfg, "found the root CA: %s", c.Subject.String())
+
 				return errors.New("found the root CA")
 			}
 

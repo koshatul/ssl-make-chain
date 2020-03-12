@@ -1,0 +1,26 @@
+language: go
+go:
+- '1.14'
+- tip
+script:
+- make lint
+- make ci
+before_deploy: 
+- make archives
+- GO_MATRIX_OS="linux" GO_MATRIX_ARCH="arm5" make archives
+- GO_MATRIX_OS="linux" GO_MATRIX_ARCH="arm7" make archives
+matrix:
+  fast_finish: true
+  allow_failures:
+  - go: tip
+deploy:
+  provider: releases
+  skip_cleanup: true
+  file_glob: true
+  api_key:
+    secure: Qk4aW9tr5uDpop6BRfgvO7Mfj0+9iMyzohVQHWKFhVs9bO5GuohdUpYyzHJkekLD5VF7Xa/N2cdAaUk8/cSqOeMs8r6r0nNlpVR/lilw2hCPS21otPFuk0vxawKi8GcOhUZlayI5Ez8JsShUJpMJGKgi0e85C8NnQyVXLhlk4HFTsyzdqVJ7vy80UsLKxtPBKzWP7DVNX8jbXgPzs6iXwHeih/PKWkJTCxbjaMFdj5nomuQVCfM1dYr/cQc8nznigyCrnLv//0M9Nlzab53crYEiatkGSHJxn++Zc4gYE1ciy23eEoVd3iUrwtrveRzN+YN1UzwhN11LRUzkMkE9RYLeKEiAlIns+AZByxiVUppPo0JRa+FnqetHdZWuUhbEQGAJlRAGp5sagVJamtQJuWhrADqvVLJaKO6wAsepzQDAmMRoTWCF7ZjLaTJnA3C+Hrw4ljLU+abM83a24Pvf/vha4QFvE9bAtZyi5FpO9I9n7N2+DnDYNET7tkihTisUhyqEFToB/1D8PQJr0HpTMFCZUiqvm1RvkRqNLO8r6tNMZcUgdM/CB9zzhk1JKRQvhhIeIkNtg3Arr8ojYHLpIainzAPQJ/nhz6iyc6GeTQHNHmSmwiWbtgCWeTj4j2EKq2tTIkDC18Y7txW4nNp0k/ltKFOedbvo70i7P4+UgMM=
+  file:
+  - artifacts/archives/*
+  go: '1.14'
+  on:
+    tags: true
