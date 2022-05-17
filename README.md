@@ -1,2 +1,5 @@
-# ssl-make-chain
-Make an SSL chain from a certificate.
+# ~~ssl-make-chain~~
+
+This project is unmaintained.
+
+~~Make an SSL chain from a certificate.~~
